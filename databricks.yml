@@ -18,15 +18,11 @@ targets:
   dev:
     mode: development
     default: true
-    workspace:
-      host: ${var.DATABRICKS_HOST}
     variables:
       catalog: uber_eats_lakehouse_dev
 
   prod:
     mode: production
-    workspace:
-      host: ${var.DATABRICKS_HOST}
     variables:
       catalog: uber_eats_lakehouse
     run_as:

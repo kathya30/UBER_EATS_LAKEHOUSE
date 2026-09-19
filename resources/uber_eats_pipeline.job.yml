@@ -1,0 +1,55 @@
+# Job resource managed by the Asset Bundle. This is the same 3-task
+# bronze -> silver -> gold pipeline, but now version-controlled and deployed
+# via CI/CD instead of being hand-clicked together in the Workflows UI.
+
+resources:
+  jobs:
+    uber_eats_lakehouse_pipeline:
+      name: uber_eats_lakehouse_pipeline
+      tags:
+        project: uber-eats-marketplace-lakehouse
+      max_concurrent_runs: 1
+      parameters:
+        - name: catalog
+          default: ${var.catalog}
+
+      tasks:
+        - task_key: bronze_ingestion
+          notebook_task:
+            notebook_path: ../pipeline/01_bronze_ingestion.py
+            base_parameters:
+              catalog: "{{job.parameters.catalog}}"
+          environment_key: default_env
+          timeout_seconds: 1200
+          max_retries: 2
+          min_retry_interval_millis: 60000
+
+        - task_key: silver_scd2_dq
+          depends_on:
+            - task_key: bronze_ingestion
+          notebook_task:
+            notebook_path: ../pipeline/02_silver_scd2_dq.py
+            base_parameters:
+              catalog: "{{job.parameters.catalog}}"
+          environment_key: default_env
+          timeout_seconds: 1200
+          max_retries: 2
+          min_retry_interval_millis: 60000
+
+        - task_key: gold_star_schema
+          depends_on:
+            - task_key: silver_scd2_dq
+          notebook_task:
+            notebook_path: ../pipeline/03_gold_star_schema.py
+            base_parameters:
+              catalog: "{{job.parameters.catalog}}"
+          environment_key: default_env
+          timeout_seconds: 1200
+          max_retries: 2
+          min_retry_interval_millis: 60000
+
+      environments:
+        - environment_key: default_env
+          spec:
+            client: "1"
+            dependencies: []

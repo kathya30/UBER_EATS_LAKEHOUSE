@@ -1,0 +1,93 @@
+{
+  "name": "uber_eats_lakehouse_pipeline",
+  "tags": {
+    "project": "uber-eats-marketplace-lakehouse",
+    "layer": "orchestration"
+  },
+  "email_notifications": {
+    "on_failure": []
+  },
+  "webhook_notifications": {},
+  "timeout_seconds": 3600,
+  "max_concurrent_runs": 1,
+  "schedule": {
+    "quartz_cron_expression": "0 0 6 * * ?",
+    "timezone_id": "Asia/Kolkata",
+    "pause_status": "PAUSED"
+  },
+  "parameters": [
+    {
+      "name": "catalog",
+      "default": "uber_eats_lakehouse"
+    }
+  ],
+  "tasks": [
+    {
+      "task_key": "bronze_ingestion",
+      "description": "Auto Loader ingestion of all raw entities into Bronze Delta tables",
+      "notebook_task": {
+        "notebook_path": "/Workspace/uber_eats_lakehouse/01_bronze_ingestion",
+        "base_parameters": {
+          "catalog": "{{job.parameters.catalog}}"
+        },
+        "source": "WORKSPACE"
+      },
+      "environment_key": "default_env",
+      "timeout_seconds": 1200,
+      "retry_on_timeout": true,
+      "max_retries": 2,
+      "min_retry_interval_millis": 60000
+    },
+    {
+      "task_key": "silver_scd2_dq",
+      "description": "SCD2 dimension merges and data quality checks with quarantine",
+      "depends_on": [
+        {
+          "task_key": "bronze_ingestion"
+        }
+      ],
+      "notebook_task": {
+        "notebook_path": "/Workspace/uber_eats_lakehouse/02_silver_scd2_dq",
+        "base_parameters": {
+          "catalog": "{{job.parameters.catalog}}"
+        },
+        "source": "WORKSPACE"
+      },
+      "environment_key": "default_env",
+      "timeout_seconds": 1200,
+      "retry_on_timeout": true,
+      "max_retries": 2,
+      "min_retry_interval_millis": 60000
+    },
+    {
+      "task_key": "gold_star_schema",
+      "description": "Curated star schema fact/dim tables with as-of SCD2 joins and liquid clustering",
+      "depends_on": [
+        {
+          "task_key": "silver_scd2_dq"
+        }
+      ],
+      "notebook_task": {
+        "notebook_path": "/Workspace/uber_eats_lakehouse/03_gold_star_schema",
+        "base_parameters": {
+          "catalog": "{{job.parameters.catalog}}"
+        },
+        "source": "WORKSPACE"
+      },
+      "environment_key": "default_env",
+      "timeout_seconds": 1200,
+      "retry_on_timeout": true,
+      "max_retries": 2,
+      "min_retry_interval_millis": 60000
+    }
+  ],
+  "environments": [
+    {
+      "environment_key": "default_env",
+      "spec": {
+        "client": "1",
+        "dependencies": []
+      }
+    }
+  ]
+}

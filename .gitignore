@@ -5,3 +5,10 @@ __pycache__/
 raw_data.zip
 *.egg-info/
 .databricks/
+
+# Streaming / AWS
+local_s3/
+.venv/
+.env
+*.pem
+.aws/

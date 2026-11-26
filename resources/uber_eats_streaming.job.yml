@@ -1,0 +1,59 @@
+# Streaming pipeline: S3 order events -> bronze (Auto Loader) -> silver (dedup,
+# watermark, DQ) -> gold (order SLA via MERGE). Runs on demand or on a schedule;
+# availableNow triggers mean each run processes whatever has landed and stops.
+
+resources:
+  jobs:
+    uber_eats_streaming_pipeline:
+      name: uber_eats_streaming_pipeline
+      tags:
+        project: uber-eats-marketplace-lakehouse
+        layer: streaming
+      max_concurrent_runs: 1
+      parameters:
+        - name: catalog
+          default: ${var.catalog}
+        - name: source          # "s3" or "volume" (fallback when Databricks cannot reach S3)
+          default: volume
+        - name: s3_path
+          default: s3://YOUR-BUCKET-NAME/order_events
+
+      tasks:
+        - task_key: stream_bronze_events
+          notebook_task:
+            notebook_path: ../pipeline/04_stream_bronze_events.py
+            base_parameters:
+              catalog: "{{job.parameters.catalog}}"
+              source: "{{job.parameters.source}}"
+              s3_path: "{{job.parameters.s3_path}}"
+          environment_key: default_env
+          timeout_seconds: 1800
+          max_retries: 1
+
+        - task_key: stream_silver_events
+          depends_on:
+            - task_key: stream_bronze_events
+          notebook_task:
+            notebook_path: ../pipeline/05_stream_silver_events.py
+            base_parameters:
+              catalog: "{{job.parameters.catalog}}"
+          environment_key: default_env
+          timeout_seconds: 1800
+          max_retries: 1
+
+        - task_key: gold_order_sla
+          depends_on:
+            - task_key: stream_silver_events
+          notebook_task:
+            notebook_path: ../pipeline/06_gold_order_sla.py
+            base_parameters:
+              catalog: "{{job.parameters.catalog}}"
+          environment_key: default_env
+          timeout_seconds: 1800
+          max_retries: 1
+
+      environments:
+        - environment_key: default_env
+          spec:
+            client: "1"
+            dependencies: []

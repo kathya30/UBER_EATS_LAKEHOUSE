@@ -13,7 +13,7 @@ catalog = dbutils.widgets.get("catalog")
 
 spark.sql(f"USE CATALOG {catalog}")
 
-LANDING_BASE = f"/Volumes/{catalog}/bronze/landing"
+LANDING_BASE = f"/Volumes/{catalog}/bronze/landing/raw_data"
 CHECKPOINT_BASE = f"/Volumes/{catalog}/bronze/landing/_checkpoints"
 
 # COMMAND ----------
@@ -43,7 +43,7 @@ def ingest_entity_autoloader(entity_name, table_name, is_streaming=True):
         .option("header", "true")
         .load(source_path)
         .withColumn("_ingested_at", F.current_timestamp())
-        .withColumn("_source_file", F.input_file_name())
+        .withColumn("_source_file", F.col("_metadata.file_path"))
     )
 
     query = (

@@ -1,7 +1,6 @@
-﻿# Databricks Asset Bundle configuration for the Uber Eats Marketplace Lakehouse.
-# This is what turns "notebooks sitting in a workspace" into a deployable,
-# environment-aware platform - the same bundle can deploy to dev or prod
-# with different catalogs/parameters, driven from CI/CD.
+# Databricks Asset Bundle configuration for the Uber Eats Marketplace Lakehouse.
+# The same bundle deploys to dev or prod; CI/CD drives it with DATABRICKS_HOST /
+# DATABRICKS_TOKEN environment variables (host cannot use variable interpolation).
 
 bundle:
   name: uber_eats_lakehouse
@@ -19,7 +18,9 @@ targets:
     mode: development
     default: true
     variables:
-      catalog: uber_eats_lakehouse_dev
+      # Free Edition has a single catalog, so dev points at it. Development
+      # mode still prefixes job names, so dev jobs never collide with prod's.
+      catalog: uber_eats_lakehouse
 
   prod:
     mode: production
